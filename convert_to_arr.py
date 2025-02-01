@@ -5,10 +5,6 @@ import shutil
 from remove_newlines import remove_newlines
 
 def convert_to_arr(file_in, file_out):
-    line_regex = "const double t[0-9]+ =[^;]*;"
-    remove_newlines(file_in, "new_file.txt", line_regex)
-    shutil.copy("new_file.txt", file_in)
-
     func_regex = "eval\("
     t_regex = "t[0-9]+"
 

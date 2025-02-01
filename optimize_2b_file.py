@@ -77,7 +77,7 @@ print(f"Removed unused indices from {files[-2]} in {t2 - t1} seconds")
 
 print("Adding vectorization...")
 t1 = time.time()
-file9 = "out_files/poly-2b-v6x-new.cpp"
+files.append("out_files/poly-2b-v6x-new.cpp")
 vectorize_indices(files[-2], files[-1])
 t2 = time.time()
 print(f"Vectorized {files[-2]} in {t2 - t1} seconds")
