@@ -1,0 +1,11 @@
+Script order
+
+1. Remove newlines from file - done!
+2. Remove unused assignments - done!
+3. Reassign shared computations / replace them in the file - done!
+4. Remove a assignments (e.g. t[1] = a[50] and replace all occurrences of t[1] with a[50]) - done!
+5. Remove unused assignments - done!
+6. Reassign variables that don't get used afterwards - done!
+7. Remove unused assignments - done!
+8. Fix the indices to make things vectorizable (e.g. t[1] => t[1*8 + i]) / insert for loops
+9. Profit
