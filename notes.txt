@@ -1,11 +1,19 @@
 Script order
 
 1. Remove newlines from file - done!
-2. Remove unused assignments - done!
-3. Reassign shared computations / replace them in the file - done!
+2. Convert to using t[] instead of local variables
+3. Remove the df[] array (it's useless)
 4. Remove a assignments (e.g. t[1] = a[50] and replace all occurrences of t[1] with a[50]) - done!
 5. Remove unused assignments - done!
-6. Reassign variables that don't get used afterwards - done!
-7. Remove unused assignments - done!
-8. Fix the indices to make things vectorizable (e.g. t[1] => t[1*8 + i]) / insert for loops
-9. Profit
+6. Reassign shared computations / replace them in the file - done!
+7. Reassign variables that don't get used afterwards - done!
+8. Remove unused assignments - done!
+9. Fix the indices to make things vectorizable (e.g. t[1] => t[1*8 + i]) / insert for loops
+10. Profit
+
+TODO:
+ - Fix vectorization
+ - Add another loop to poly-2b-v6x.cpp
+    - The evaluation is already batched and memory is laid out contiguously
+ - Change all necesssary header files
+ - Run this script on other 2b / 3b files
