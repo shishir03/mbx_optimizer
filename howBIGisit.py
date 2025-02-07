@@ -18,3 +18,6 @@ def how_big_is_it(file_in):
         line = file.readline()
 
     return maxidx + 1
+
+if __name__ == "__main__":
+    print(how_big_is_it("out_files/noaassignments.cpp"))
