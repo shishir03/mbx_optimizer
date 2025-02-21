@@ -10,33 +10,34 @@ from remove_unused import remove_unused_vars
 from howBIGisit import how_big_is_it
 
 MBX_DIR = f"{os.getenv("HOME")}/MBX/src/potential"
+OUT_DIR = "../out_files"
 files = []
 
 print("Removing newlines...")
 t1 = time.time()
 files.append(f"{MBX_DIR}/3b/poly-3b-v2x.cpp")
-files.append("out_files/nobreaks.cpp")
+files.append(f"{OUT_DIR}/nobreaks.cpp")
 remove_newlines(files[-2], files[-1])
 t2 = time.time()
 print(f"Removed newlines from {files[-2]} in {t2 - t1} seconds")
 
 print("Removing a assigments...")
 t1 = time.time()
-files.append("out_files/noaassignments.cpp")
+files.append(f"{OUT_DIR}/noaassignments.cpp")
 remove_assignments(files[-2], files[-1], "a")
 t2 = time.time()
 print(f"Removed a assignments from {files[-2]} in {t2 - t1} seconds")
 
 print("Removing unused indices...")
 t1 = time.time()
-files.append("out_files/noskips.cpp")
+files.append(f"{OUT_DIR}/noskips.cpp")
 remove_unused_vars(files[-2], files[-1])
 t2 = time.time()
 print(f"Removed unused indices from {files[-2]} in {t2 - t1} seconds")
 
 print("Reassigning shared computations (pass 1)...")
 t1 = time.time()
-files.append("out_files/sharedcomps.cpp")
+files.append(f"{OUT_DIR}/sharedcomps.cpp")
 reassign_shared_computations(files[-2], files[-1])
 print("Reassigning shared computations (pass 2)...")
 files.append("sharedcomps2.cpp")
@@ -46,21 +47,21 @@ print(f"Reassigned shared computations in {files[-2]} in {t2 - t1} seconds")
 
 print("Reassigning variables...")
 t1 = time.time()
-files.append("out_files/newvars.cpp")
+files.append(f"{OUT_DIR}/newvars.cpp")
 reassign_unused_vars(files[-2], files[-1])
 t2 = time.time()
 print(f"Reassigned variables in {files[-2]} in {t2 - t1} seconds")
 
 print("Removing unused indices...")
 t1 = time.time()
-files.append("out_files/noskips2.cpp")
+files.append(f"{OUT_DIR}/noskips2.cpp")
 remove_unused_vars(files[-2], files[-1])
 t2 = time.time()
 print(f"Removed unused indices from {files[-2]} in {t2 - t1} seconds")
 
 print("Adding vectorization...")
 t1 = time.time()
-files.append("out_files/poly-3b-v2x-new.cpp")
+files.append(f"{OUT_DIR}/poly-3b-v2x-new.cpp")
 vectorize_indices(files[-2], files[-1])
 t2 = time.time()
 print(f"Vectorized {files[-2]} in {t2 - t1} seconds")

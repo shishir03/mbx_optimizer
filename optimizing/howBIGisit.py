@@ -20,4 +20,4 @@ def how_big_is_it(file_in):
     return maxidx + 1
 
 if __name__ == "__main__":
-    print(how_big_is_it("out_files/noaassignments.cpp"))
+    print(how_big_is_it("../out_files/noaassignments.cpp"))
