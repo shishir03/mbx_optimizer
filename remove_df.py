@@ -14,6 +14,7 @@ def remove_df(file_in, file_out):
     df_df_regex = re.compile("df\[[0-9]+\] = df\[[0-9]+\];")
     df_var_regex = re.compile("df\[[0-9]+\]")
     t_var_regex = re.compile("t\[[0-9]+\]")
+    t_t_regex = re.compile("t\[[0-9]+\] = t\[[0-9]+\];")
 
     file = open(file_in, "r+")
     line = file.readline()
@@ -84,11 +85,14 @@ def remove_df(file_in, file_out):
             line = file.readline()
             continue
 
+        # Skip this line if it's df[??] = df[??];
         if re.search(df_df_regex, line) is not None:
             line = file.readline()
             continue
 
         line = re.sub(df_var_regex, fix_df, line)
         line = re.sub(t_var_regex, fix_t_df, line)
-        new_file.write(line)
+        if re.search(t_t_regex, line) is None:
+            new_file.write(line)
+            
         line = file.readline()

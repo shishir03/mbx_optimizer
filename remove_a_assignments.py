@@ -29,7 +29,7 @@ def remove_assignments(file_in, file_out, arr):
 
         line = file.readline()
 
-    print(a_vars)
+    # print(a_vars)
 
     file = open(file_in, "r+")
     new_file = open(file_out, "w")
@@ -46,4 +46,4 @@ def remove_assignments(file_in, file_out, arr):
         line = file.readline()
 
 if __name__ == "__main__":
-    remove_assignments("out_files/nodf.cpp", "out_files/noassignments.cpp", "a")
+    remove_assignments("out_files/nodf.cpp", "out_files/noaassignments.cpp", "a")
