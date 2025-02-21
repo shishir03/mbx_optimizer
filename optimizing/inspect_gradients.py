@@ -1,5 +1,5 @@
-file_bad = "out_files/bad_gradients.txt"
-file_good = "out_files/good_gradients.txt"
+file_bad = "test_files/bad_gradients.txt"
+file_good = "test_files/good_gradients.txt"
 
 def gradient_dict(file_in):
     file = open(file_in, "r")
