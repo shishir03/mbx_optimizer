@@ -3,8 +3,8 @@ from remove_unused import get_unused_vars
 file_bad = "test_files/bad_t.txt"
 file_good = "test_files/good_t.txt"
 
-unused_t = get_unused_vars("out_files/noaassignments.cpp", 0)
-print(unused_t)
+unused_t = get_unused_vars("out_files/nodf.cpp", 0)
+# print(unused_t)
 
 file_bad = open(file_bad, "r")
 file_good = open(file_good, "r")
