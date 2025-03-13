@@ -13,7 +13,3 @@ Script order
 
 TODO:
  - Fix vectorization
- - Add another loop to poly-2b-v6x.cpp
-    - The evaluation is already batched and memory is laid out contiguously
- - Change all necesssary header files
- - Run this script on other 2b / 3b files

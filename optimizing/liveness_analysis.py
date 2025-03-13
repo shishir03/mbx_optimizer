@@ -73,3 +73,6 @@ def reassign_unused_vars(file_in, file_out):
         new_file.write(line)
         line = file.readline()
         lineno += 1
+
+if __name__ == "__main__":
+    reassign_unused_vars("test_files/test.txt", "test_files/test_out.txt")

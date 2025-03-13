@@ -12,7 +12,7 @@ from remove_unused import remove_unused_vars
 from howBIGisit import how_big_is_it
 
 MBX_DIR = f"{os.getenv("HOME")}/MBX/src/potential"
-OUT_DIR = "../out_files"
+OUT_DIR = "out_files"
 files = []
 
 print("Removing newlines...")
