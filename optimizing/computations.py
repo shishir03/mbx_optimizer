@@ -358,7 +358,7 @@ def reassign_shared_computations(file_in, file_out):
                         except ValueError:
                             comp_trees_freq.append(comp)
 
-    comp_trees_linenos = [set() for _ in range(len(comp_trees_freq))]     # Shared computations get used at which lines?
+    comp_trees_linenos = set()     # Shared computations occur on which lines?
 
     for i in range(NUM_VARS):
         parse_tree = parse_trees[i]
@@ -368,12 +368,11 @@ def reassign_shared_computations(file_in, file_out):
             shared_comp_tree = comp_trees_freq[j]
 
             if isinstance(parse_tree, ParseTreeNode) and is_comp_subset(parse_tree, shared_comp_tree):
-                idx = comp_trees_freq.index(shared_comp_tree)
                 comp_trees_by_line[i].append(shared_comp_tree)
-                comp_trees_linenos[idx].add(i)
+                comp_trees_linenos.add(i)
 
+    comp_trees_linenos = sorted(comp_trees_linenos)
     usages_shared = [[] for _ in range(NUM_VARS)]   # Which shared computations are each variable used in?
-    # print(len(comp_trees_freq))
     for i in range(len(comp_trees_freq)):
         comp = comp_trees_freq[i]
         comp_vars = [i.comp for i in get_leaves(comp)]
@@ -386,26 +385,18 @@ def reassign_shared_computations(file_in, file_out):
         comp = comp_trees_freq[i]
         comp_vars = [i.comp for i in get_leaves(comp)]
         replaceable = 0
-        linenos = sorted(comp_trees_linenos[i])
-
-        # print(linenos)
 
         for var in comp_vars:
             if var[0] == "t":
                 t_var = int(var[2:-1])
-                if usages[t_var][-1] <= linenos[-1]:
-                    # Variable isn't used after shared computation
-                    last_usage = -1     # Last usage of t[i] that isn't in the shared computation
-                    for j in usages[t_var]:
-                        if j not in linenos:
-                            last_usage = j
-                            break
+                only_in_shared = True
+                for u in usages[t_var]:
+                    if u not in comp_trees_linenos:
+                        only_in_shared = False
+                        break
 
-                    # print(last_usage)
-                    if last_usage < linenos[0]:
-                        # print(comp)
-                        replaceable += 1
-                        # print(replaceable)
+                if only_in_shared:
+                    replaceable += 1
 
         replaceable_vars.append(replaceable)
     '''
@@ -445,7 +436,6 @@ def reassign_shared_computations(file_in, file_out):
 
         shared_comps = comp_trees_by_line[tree_idx]
         comps_to_replace = []
-        # best_comp = shared_comps[0]
         for c in shared_comps:
             if replaceable_vars[comp_trees_freq.index(c)] >= 2:
                 comps_to_replace.append(c)
