@@ -1,24 +1,69 @@
 import re
 import ast
 import astor
+from collections import Counter
 from functools import cmp_to_key
 
 from howBIGisit import how_big_is_it
 
 # Custom parse tree data structure
 class ParseTreeNode:
-    def __init__(self, op, children):
-        self.op = op
-        self.children = children
+    def __init__(self, ast_parse_tree:ast.BinOp):
+        self.op = ast_parse_tree.op
 
-    def tostring(self, tabdepth=0):
-        s = "\t"*tabdepth + f"ParseTreeNode {self.op}\n"
-        for node in self.children:
-            s += f"{node.tostring(tabdepth + 1)}\n"
-        return s
+        ast_children = [ast_parse_tree.left, ast_parse_tree.right]
+        children = []
+
+        same_op_node = None
+        for node in ast_children:
+            leaf = isinstance(node, ast.Constant) or isinstance(node, ast.Subscript)
+            if not leaf and node.op == self.op:
+                same_op_node = node
+                break
+
+        while same_op_node:
+            same_op_children = same_op_node.children
+            ast_children.remove(same_op_node)
+            ast_children += same_op_children
+
+            same_op_node = None
+            for node in ast_children:
+                leaf = isinstance(node, ast.Constant) or isinstance(node, ast.Subscript)
+                if not leaf and node.op == self.op:
+                    same_op_node = node
+                    break
+
+        for node in ast_children:
+            if isinstance(node, ast.Subscript):
+                # print(ast.dump(parse_tree, indent=4))
+                arr = node.value.id
+                idx = astor.to_source(node.slice).strip()[1:-1]
+                # print(f"{arr}[{idx}]")
+                children.append(ParseTreeLeaf(f"{arr}[{idx}]"))
+            if isinstance(node, ast.Constant):
+                children.append(ParseTreeLeaf(node.value))
+            else:
+                children.append(ParseTreeNode(node))
+
+        self.children = tuple(sorted(ast_children))
     
     def __str__(self):
         return self.tostring()
+
+    def __lt__(self, other):
+        if isinstance(other, ParseTreeLeaf):
+            return True
+
+        if(len(self.children)) != len(other.children):
+            return len(other.children) < len(self.children)
+        
+        for i in range(len(self.children)):
+            if self.children[i] > other.children[i]:
+                return False
+            elif self.children[i] < other.children[i]:
+                return True
+
+        return False
     
     def __eq__(self, other):
         if not isinstance(other, ParseTreeNode):
@@ -32,6 +77,12 @@ class ParseTreeNode:
             return True
         
         return False
+    
+    def tostring(self, tabdepth=0):
+        s = "\t"*tabdepth + f"ParseTreeNode {self.op}\n"
+        for node in self.children:
+            s += f"{node.tostring(tabdepth + 1)}\n"
+        return s
     
     def get_comp_string(self):
         compstring = ""
@@ -62,93 +113,17 @@ class ParseTreeLeaf:
             return False
         
         return self.comp == other.comp
-
-# Comparator function for comparing two parse tree nodes (note: we assume the parse tree node's children are already sorted)
-def compare_trees(tree1, tree2):
-    if isinstance(tree1, ParseTreeLeaf) and isinstance(tree2, ParseTreeLeaf):
-        return 0 if tree1.comp == tree2.comp else (1 if tree1.comp > tree2.comp else -1)
-    elif isinstance(tree1, ParseTreeLeaf) and isinstance(tree2, ParseTreeNode):
-        return 1
-    elif isinstance(tree1, ParseTreeNode) and isinstance(tree2, ParseTreeLeaf):
-        return -1
-    else:
-        if len(tree1.children) != len(tree2.children):
-            return len(tree2.children) - len(tree1.children)
-        
-        for i in range(len(tree1.children)):
-            if compare_trees(tree1.children[i], tree2.children[i]) > 0:
-                return 1
-            elif compare_trees(tree1.children[i], tree2.children[i]) < 0:
-                return -1
-            
-        return 0
     
-'''
-If node's children are all leaves then just sort them with sort()
-Otherwise, go thru non-leaf children and call sort_tree on them
-Then, sort all children with sort()
-'''
-def sort_tree(node: ParseTreeNode):
-    all_leaves = True
-    for child in node.children:
-        if isinstance(child, ParseTreeNode):
-            all_leaves = False
-            break
+    def __lt__(self, other):
+        if not isinstance(other, ParseTreeLeaf):
+            return False
 
-    if all_leaves:
-        node.children = sorted(node.children, key=cmp_to_key(compare_trees))
-    else:
-        for child in node.children:
-            if isinstance(child, ParseTreeNode):
-                sort_tree(child)
-        
-        node.children = sorted(node.children, key=cmp_to_key(compare_trees))
-
-def condense_parse_tree(parse_tree: ParseTreeNode):
-    same_op_node = None
-    for node in parse_tree.children:
-        if isinstance(node, ParseTreeNode) and node.op == parse_tree.op:
-            same_op_node = node
-            break
-
-    while same_op_node:
-        same_op_children = same_op_node.children
-        parse_tree.children.remove(same_op_node)
-        parse_tree.children += same_op_children
-
-        same_op_node = None
-        for node in parse_tree.children:
-            if isinstance(node, ParseTreeNode) and node.op == parse_tree.op:
-                same_op_node = node
-                break
-
-    for node in parse_tree.children:
-        if isinstance(node, ParseTreeNode):
-            condense_parse_tree(node)
-
-def convert_parse_tree(parse_tree):
-    if isinstance(parse_tree, ast.Subscript):
-        # print(ast.dump(parse_tree, indent=4))
-        arr = parse_tree.value.id
-        idx = astor.to_source(parse_tree.slice).strip()[1:-1]
-        # print(f"{arr}[{idx}]")
-        return ParseTreeLeaf(f"{arr}[{idx}]")
-    if isinstance(parse_tree, ast.Constant):
-        return ParseTreeLeaf(parse_tree.value)
-    else:
-        node = ParseTreeNode(parse_tree.op, [])
-        node_left = convert_parse_tree(parse_tree.left)
-        node_right = convert_parse_tree(parse_tree.right)
-        node.children.append(node_left)
-        node.children.append(node_right)
-        condense_parse_tree(node)
-        sort_tree(node)
-        return node
+        return self.comp < other.comp
 
 # Takes in computation string (e.g. "1 * 2 + 3") and returns our custom parse tree representation
 def build_parse_tree(comp):
     parse_tree = ast.parse(comp.strip()).body[0].value
-    return convert_parse_tree(parse_tree)
+    return ParseTreeNode(parse_tree) if isinstance(parse_tree, ast.BinOp) else ParseTreeLeaf(parse_tree)
 
 def get_common_children(tree1, tree2):
     common_children = []
