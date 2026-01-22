@@ -415,9 +415,10 @@ def reassign_shared_computations(file_in, file_out):
     new_file = open(file_out, "w")
     line = file.readline()
     tree_idx = 0
-    repl_idx = NUM_VARS     # t index to assign shared computation to
 
-    repl_var = [-1 for _ in range(len(comp_trees_freq))]    # Which variable is each shared comp assigned to?
+    for idx, shared_comp in comp_trees_freq:
+        new_file.write(f"// REPEATED COMPUTATION\n")
+        new_file.write(f"t[{idx + NUM_VARS}] = {shared_comp.get_comp_string()};\n")
 
     while line:
         comp = re.findall(regex, line)
@@ -447,13 +448,7 @@ def reassign_shared_computations(file_in, file_out):
         parse_rhs = build_parse_tree(rhs)
         for replace in comps_to_replace:
             best_idx = comp_trees_freq.index(replace)
-            if repl_var[best_idx] < 0:
-                new_file.write(f"// REPEATED COMPUTATION\n")
-                new_file.write(f"t[{repl_idx}] = {replace.get_comp_string()};\n")
-                repl_var[best_idx] = repl_idx
-                repl_idx += 1
-
-            parse_rhs = replace_comp(parse_rhs, replace, ParseTreeLeaf(f"t[{repl_var[best_idx]}]"))
+            parse_rhs = replace_comp(parse_rhs, replace, ParseTreeLeaf(f"t[{best_idx + NUM_VARS}]"))
         
         new_comp_str_rhs = parse_rhs.get_comp_string()
         new_comp = f"{lhs} = {new_comp_str_rhs};\n"
