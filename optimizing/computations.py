@@ -16,20 +16,18 @@ class ParseTreeNode:
 
         same_op_node = None
         for node in ast_children:
-            leaf = isinstance(node, ast.Constant) or isinstance(node, ast.Subscript)
-            if not leaf and node.op == self.op:
+            if isinstance(node, ast.BinOp) and node.op == self.op:
                 same_op_node = node
                 break
 
         while same_op_node:
-            same_op_children = same_op_node.children
+            same_op_children = [same_op_node.left, same_op_node.right]
             ast_children.remove(same_op_node)
             ast_children += same_op_children
 
             same_op_node = None
             for node in ast_children:
-                leaf = isinstance(node, ast.Constant) or isinstance(node, ast.Subscript)
-                if not leaf and node.op == self.op:
+                if isinstance(node, ast.BinOp) and node.op == self.op:
                     same_op_node = node
                     break
 
@@ -40,12 +38,12 @@ class ParseTreeNode:
                 idx = astor.to_source(node.slice).strip()[1:-1]
                 # print(f"{arr}[{idx}]")
                 children.append(ParseTreeLeaf(f"{arr}[{idx}]"))
-            if isinstance(node, ast.Constant):
+            elif isinstance(node, ast.Constant):
                 children.append(ParseTreeLeaf(node.value))
             else:
                 children.append(ParseTreeNode(node))
 
-        self.children = tuple(sorted(ast_children))
+        self.children = tuple(sorted(children))
     
     def __str__(self):
         return self.tostring()
