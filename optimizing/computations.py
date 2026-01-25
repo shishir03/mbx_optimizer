@@ -1,58 +1,30 @@
 import re
 import ast
 import astor
-from collections import Counter
 from functools import cmp_to_key
 
 from howBIGisit import how_big_is_it
 
 # Custom parse tree data structure
 class ParseTreeNode:
-    def __init__(self, ast_parse_tree:ast.BinOp):
-        self.op = ast_parse_tree.op
-
-        ast_children = [ast_parse_tree.left, ast_parse_tree.right]
-        children = []
-
-        same_op_node = None
-        for node in ast_children:
-            if isinstance(node, ast.BinOp) and node.op == self.op:
-                same_op_node = node
-                break
-
-        while same_op_node:
-            same_op_children = [same_op_node.left, same_op_node.right]
-            ast_children.remove(same_op_node)
-            ast_children += same_op_children
-
-            same_op_node = None
-            for node in ast_children:
-                if isinstance(node, ast.BinOp) and node.op == self.op:
-                    same_op_node = node
-                    break
-
-        for node in ast_children:
-            if isinstance(node, ast.Subscript):
-                # print(ast.dump(parse_tree, indent=4))
-                arr = node.value.id
-                idx = astor.to_source(node.slice).strip()[1:-1]
-                # print(f"{arr}[{idx}]")
-                children.append(ParseTreeLeaf(f"{arr}[{idx}]"))
-            elif isinstance(node, ast.Constant):
-                children.append(ParseTreeLeaf(node.value))
-            else:
-                children.append(ParseTreeNode(node))
-
-        self.children = tuple(sorted(children))
+    """
+    Initialize a ParseTreeNode object with the given root op and pre-sorted tuple of children
+    """
+    def __init__(self, root_op:ast.operator, children:tuple):
+        self.op = root_op
+        self.children = children
     
     def __str__(self):
         return self.tostring()
+    
+    def __hash__(self):
+        return (self.children.__hash__() << 1) | (1 if self.op == "+" else 0)
 
     def __lt__(self, other):
         if isinstance(other, ParseTreeLeaf):
             return True
 
-        if(len(self.children)) != len(other.children):
+        if len(self.children) != len(other.children):
             return len(other.children) < len(self.children)
         
         for i in range(len(self.children)):
@@ -76,6 +48,44 @@ class ParseTreeNode:
         
         return False
     
+    def create_tree_from_binop(ast_parse_tree:ast.BinOp):
+        root_op = ast_parse_tree.op
+
+        ast_children = [ast_parse_tree.left, ast_parse_tree.right]
+        children = []
+
+        same_op_node = None
+        for node in ast_children:
+            if isinstance(node, ast.BinOp) and node.op == root_op:
+                same_op_node = node
+                break
+
+        while same_op_node:
+            same_op_children = [same_op_node.left, same_op_node.right]
+            ast_children.remove(same_op_node)
+            ast_children += same_op_children
+
+            same_op_node = None
+            for node in ast_children:
+                if isinstance(node, ast.BinOp) and node.op == root_op:
+                    same_op_node = node
+                    break
+
+        for node in ast_children:
+            if isinstance(node, ast.Subscript):
+                arr = node.value.id
+                idx = astor.to_source(node.slice).strip()[1:-1]
+                children.append(ParseTreeLeaf(f"{arr}[{idx}]"))
+            elif isinstance(node, ast.Constant):
+                children.append(ParseTreeLeaf(node.value))
+            else:
+                children.append(ParseTreeNode.create_tree_from_binop(node))
+
+        return ParseTreeNode(
+            "+" if isinstance(root_op, ast.Add) else "*",
+            tuple(sorted(children))
+        )
+    
     def tostring(self, tabdepth=0):
         s = "\t"*tabdepth + f"ParseTreeNode {self.op}\n"
         for node in self.children:
@@ -92,16 +102,31 @@ class ParseTreeNode:
                 compstring += opstring
 
         return compstring
+    
+    # Get all the leaves in a parse tree
+    def get_leaves(self):
+        leaves = []
+        for child in self.children:
+            if isinstance(child, ParseTreeLeaf):
+                leaves.append(child)
+            else:
+                leaves.extend(child.get_leaves())
+
+        return leaves
+    
+    def size(self):
+        s = 0
+        for child in self.children:
+            s += child.size
+
+        return s
 
 class ParseTreeLeaf:
     def __init__(self, comp):
         self.comp = str(comp)
 
-    def tostring(self, tabdepth=0):
-        return "\t"*tabdepth + self.comp
-    
-    def get_comp_string(self):
-        return f"({self.comp})"
+    def __hash__(self):
+        return self.comp.__hash__()
     
     def __str__(self):
         return self.tostring()
@@ -117,15 +142,24 @@ class ParseTreeLeaf:
             return False
 
         return self.comp < other.comp
+    
+    def tostring(self, tabdepth=0):
+        return "\t"*tabdepth + self.comp
+
+    def get_comp_string(self):
+        return f"({self.comp})"
+
+    def size(self):
+        return 1
 
 # Takes in computation string (e.g. "1 * 2 + 3") and returns our custom parse tree representation
 def build_parse_tree(comp):
     parse_tree = ast.parse(comp.strip()).body[0].value
-    return ParseTreeNode(parse_tree) if isinstance(parse_tree, ast.BinOp) else ParseTreeLeaf(parse_tree)
+    return ParseTreeNode.create_tree_from_binop(parse_tree) if isinstance(parse_tree, ast.BinOp) else ParseTreeLeaf(parse_tree)
 
 def get_common_children(tree1, tree2):
     common_children = []
-    tree2_children: list = tree2.children[:]
+    tree2_children: list = list(tree2.children)
 
     for child in tree1.children:
         for i in range(len(tree2_children)):
@@ -135,7 +169,7 @@ def get_common_children(tree1, tree2):
                 tree2_children.pop(i)
                 break
 
-    return common_children
+    return tuple(sorted(common_children))
 
 '''
 Find largest common computation between tree1 and tree2
@@ -150,7 +184,7 @@ def get_common_computation(tree1: ParseTreeNode, tree2: ParseTreeNode):
     if tree1.op == tree2.op:
         common_children = get_common_children(tree1, tree2)
         if len(common_children) >= 2:
-            return [ParseTreeNode(tree1.op, get_common_children(tree1, tree2))]
+            return [ParseTreeNode(tree1.op, common_children)]
         if len(common_children) == 1 and isinstance(common_children[0], ParseTreeNode):
             return [common_children[0]]
         
@@ -280,7 +314,7 @@ def reassign_shared_computations(file_in, file_out):
     comp_list = re.findall(regex, contents)
 
     replaceable_vars = []   # How many variables are replaceable in each shared comp tree?
-    comp_trees_freq = []        # Shared computations
+    comp_trees_freq = dict()        # Shared computations
 
     # Assume both parse trees are shared computations
     def compare_replaceable(parse_tree1, parse_tree2):
@@ -319,7 +353,6 @@ def reassign_shared_computations(file_in, file_out):
 
     usages = [sorted(i) for i in usages]
 
-    comp_trees_linenos = []
     comp_trees_by_line = [[] for _ in range(NUM_VARS)]      # What shared computations are at each variable #?
 
     for i in range(NUM_VARS):
@@ -328,22 +361,20 @@ def reassign_shared_computations(file_in, file_out):
                 common_comp = get_common_computation(parse_trees[i], parse_trees[j])
                 if common_comp != None:
                     for comp in common_comp:
-                        try:
-                            comp_idx = comp_trees_freq.index(comp)
-                            lineno_set = comp_trees_linenos[comp_idx]
-                            lineno_set.add(i)
-                            lineno_set.add(j)
-                        except ValueError:
-                            comp_trees_freq.append(comp)
-                            lineno_set = set()
-                            lineno_set.add(i)
-                            lineno_set.add(j)
-                            comp_trees_linenos.append(lineno_set)
+                        linenos = comp_trees_freq.get(comp)
+                        if linenos is None:
+                            linenos = set()
+                            linenos.add(i)
+                            linenos.add(j)
+                            comp_trees_freq[comp] = linenos
+                        else:
+                            linenos.add(i)
+                            linenos.add(j)
 
-    comp_trees_linenos = [sorted(list(lineno_set)) for lineno_set in comp_trees_linenos]
+    comp_trees_freq = {comp:sorted(list(lineno_set)) for comp, lineno_set in comp_trees_freq}
 
     all_linenos = set()     # Shared computations occur on which lines?
-    for lineno_set in comp_trees_linenos:
+    for lineno_set in comp_trees_freq.items():
         for l in lineno_set:
             all_linenos.add(l)
 
@@ -363,15 +394,14 @@ def reassign_shared_computations(file_in, file_out):
             if u not in all_linenos:
                 last_nonshared_usages[i] = u
 
-    for i in range(len(comp_trees_freq)):
-        comp = comp_trees_freq[i]
+    for comp in comp_trees_freq.keys():
         comp_vars = [i.comp for i in get_leaves(comp)]
         replaceable = 0
 
         for var in comp_vars:
             if var[0] == "t":
                 t_var = int(var[2:-1])
-                if last_nonshared_usages[t_var] < comp_trees_linenos[i][0]:
+                if last_nonshared_usages[t_var] < comp_trees_freq[comp][0]:
                     replaceable += 1
 
         replaceable_vars.append(replaceable)
