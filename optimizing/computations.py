@@ -294,7 +294,6 @@ def replace_comp(tree: ParseTreeNode, comp: ParseTreeNode, replace: ParseTreeLea
 # Read from our file - actual computations start here now
 def reassign_shared_computations(file_in, file_out):
     NUM_VARS = how_big_is_it(file_in)
-    print(f"{NUM_VARS} vars")
 
     regex = "t\\[[0-9]+\\] =[^;]*;"
     regex = re.compile(regex)
@@ -346,7 +345,6 @@ def reassign_shared_computations(file_in, file_out):
 
     usages = [sorted(i) for i in usages]
 
-    comp_trees_linenos = []
     comp_trees_by_line = [[] for _ in range(NUM_VARS)]      # What shared computations are at each variable #?
 
     for i in range(NUM_VARS):
@@ -356,23 +354,11 @@ def reassign_shared_computations(file_in, file_out):
                 if common_comp != None:
                     for comp in common_comp:
                         try:
-                            comp_idx = comp_trees_freq.index(comp)
-                            lineno_set = comp_trees_linenos[comp_idx]
-                            lineno_set.add(i)
-                            lineno_set.add(j)
+                            comp_trees_freq.index(comp)
                         except ValueError:
                             comp_trees_freq.append(comp)
-                            lineno_set = set()
-                            lineno_set.add(i)
-                            lineno_set.add(j)
-                            comp_trees_linenos.append(lineno_set)
 
-    comp_trees_linenos = [sorted(list(lineno_set)) for lineno_set in comp_trees_linenos]
-
-    all_linenos = set()     # Shared computations occur on which lines?
-    for lineno_set in comp_trees_linenos:
-        for l in lineno_set:
-            all_linenos.add(l)
+    comp_trees_linenos = [set() for _ in range(len(comp_trees_freq))]     # Shared computations get used at which lines?
 
     for i in range(NUM_VARS):
         parse_tree = parse_trees[i]
@@ -382,24 +368,44 @@ def reassign_shared_computations(file_in, file_out):
             shared_comp_tree = comp_trees_freq[j]
 
             if isinstance(parse_tree, ParseTreeNode) and is_comp_subset(parse_tree, shared_comp_tree):
+                idx = comp_trees_freq.index(shared_comp_tree)
                 comp_trees_by_line[i].append(shared_comp_tree)
+                comp_trees_linenos[idx].add(i)
 
-    last_nonshared_usages = [-1 for _ in range(NUM_VARS)]
-    for i in range(NUM_VARS):
-        for u in usages[i]:
-            if u not in all_linenos:
-                last_nonshared_usages[i] = u
+    usages_shared = [[] for _ in range(NUM_VARS)]   # Which shared computations are each variable used in?
+    # print(len(comp_trees_freq))
+    for i in range(len(comp_trees_freq)):
+        comp = comp_trees_freq[i]
+        comp_vars = [i.comp for i in get_leaves(comp)]
+        for var in comp_vars:
+            if var[0] == "t":
+                t_var = int(var[2:-1])
+                usages_shared[t_var].append(comp)
 
     for i in range(len(comp_trees_freq)):
         comp = comp_trees_freq[i]
         comp_vars = [i.comp for i in get_leaves(comp)]
         replaceable = 0
+        linenos = sorted(comp_trees_linenos[i])
+
+        # print(linenos)
 
         for var in comp_vars:
             if var[0] == "t":
                 t_var = int(var[2:-1])
-                if last_nonshared_usages[t_var] < comp_trees_linenos[i][0]:
-                    replaceable += 1
+                if usages[t_var][-1] <= linenos[-1]:
+                    # Variable isn't used after shared computation
+                    last_usage = -1     # Last usage of t[i] that isn't in the shared computation
+                    for j in usages[t_var]:
+                        if j not in linenos:
+                            last_usage = j
+                            break
+
+                    # print(last_usage)
+                    if last_usage < linenos[0]:
+                        # print(comp)
+                        replaceable += 1
+                        # print(replaceable)
 
         replaceable_vars.append(replaceable)
     '''
@@ -439,6 +445,7 @@ def reassign_shared_computations(file_in, file_out):
 
         shared_comps = comp_trees_by_line[tree_idx]
         comps_to_replace = []
+        # best_comp = shared_comps[0]
         for c in shared_comps:
             if replaceable_vars[comp_trees_freq.index(c)] >= 2:
                 comps_to_replace.append(c)
@@ -461,7 +468,3 @@ def reassign_shared_computations(file_in, file_out):
 
         tree_idx += 1
         line = file.readline()
-
-if __name__ == "__main__":
-    out_dir = "./out_files/3b"
-    reassign_shared_computations(f"{out_dir}/noskips.cpp", f"{out_dir}/barn.cpp")
