@@ -1,4 +1,5 @@
 import re
+import matplotlib.pyplot as plt
 
 from howBIGisit import how_big_is_it
 
@@ -36,6 +37,7 @@ def plot_livesize(file_in):
     file = open(file_in, "r+")
     line = file.readline()
     lineno = 1
+    comp_lineno = 1         # Only tracking lines where a computation happens
 
     kill_line, _ = get_kill_lines(file_in)
 
@@ -57,17 +59,18 @@ def plot_livesize(file_in):
             iter = re.finditer(regex, rhs)
             for match in iter:
                 index = int(match.group(0)[2:-1])
-                if index in kill_line[lineno]:
-                    try:
-                        liveset.remove(index)
-                    except KeyError:
-                        print(f"Element {index} wasn't in the set anyway!")
+                if index in kill_line[lineno] and index in liveset:
+                    liveset.remove(index)
 
-        lines.append(lineno)
-        livesizes.append(len(liveset))
+            lines.append(comp_lineno)
+            livesizes.append(len(liveset))
+            comp_lineno += 1
 
         line = file.readline()
         lineno += 1
+
+    plt.plot(lines, livesizes, label=file_in)
+    return max(livesizes)
 
 def reassign_unused_vars(file_in, file_out):
     NUM_VARS = how_big_is_it(file_in)
@@ -122,5 +125,13 @@ def reassign_unused_vars(file_in, file_out):
         lineno += 1
 
 if __name__ == "__main__":
-    reassign_unused_vars("out_files/3b/sharedcomps.cpp", "out_files/3b/newvars-new.cpp")
-    print(how_big_is_it("out_files/3b/newvars-new.cpp"))
+    # reassign_unused_vars("out_files/3b/sharedcomps.cpp", "out_files/3b/newvars-new.cpp")
+    # print(how_big_is_it("out_files/3b/newvars-new.cpp"))
+
+    max_livesize = plot_livesize("out_files/3b/nobreaks.cpp")
+    print(max_livesize)
+
+    plt.xlabel("Line number")
+    plt.ylabel("Livesize")
+    plt.legend()
+    plt.show()
